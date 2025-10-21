@@ -54,87 +54,59 @@ function App() {
     setStatus("Connecting to wallet...");
 
     try {
-      // First, connect to the wallet normally
+      // Request accounts - this will open the wallet popup
       const accounts = await provider.request({
         method: "eth_requestAccounts",
         params: [],
       });
 
-      // Get the universal account (first connected account)
-      const universalAddr = accounts[0];
-      setUniversalAccount(universalAddr);
+      if (!accounts || accounts.length === 0) {
+        throw new Error("No accounts found");
+      }
 
-      // Try Base Account SDK methods, but fall back gracefully if not supported
-      let subAccountData = null;
-      let connectionType = "standard";
+      // The first account is the universal Base Account
+      const connectedAccount = accounts[0];
+      setUniversalAccount(connectedAccount);
 
+      setStatus("Checking for sub-accounts...");
+
+      // Get existing sub-accounts for this domain
       try {
-        setStatus("Checking for Base Account support...");
-
-        // Try to get existing sub-accounts
-        const subAccountResponse = await provider.request({
+        const response = await provider.request({
           method: "wallet_getSubAccounts",
           params: [
-            { accounts: [universalAddr], domain: window.location.origin },
+            {
+              version: "2.0.0",
+              account: connectedAccount,
+              domain: window.location.origin,
+              chainId: baseSepolia.id,
+            },
           ],
         });
 
-        // If we get here, Base Account SDK is supported
-        const existingSubAccount = subAccountResponse.subAccounts?.[0];
+        const existingSubAccount = response?.subAccounts?.[0];
+
         if (existingSubAccount) {
-          subAccountData = existingSubAccount;
-          connectionType = "base-account";
-          setStatus("Connected with Base Account");
+          setSubAccount(existingSubAccount);
+          setStatus("Connected with existing sub-account");
         } else {
-          setStatus("Creating Base Account...");
-
-          // Try to create a new sub-account
-          const newSubAccount = await provider.request({
-            method: "wallet_addSubAccounts",
-            params: [{ accounts: [{ type: "create" }] }],
-          });
-
-          subAccountData = newSubAccount;
-          connectionType = "base-account";
-          setStatus("Base Account created successfully");
+          setStatus("No sub-account found - using universal account");
+          setSubAccount({ address: connectedAccount });
         }
-      } catch (baseAccountError) {
-        // Base Account SDK methods not supported - use fallback
+      } catch (subAccountError) {
         console.log(
-          "Base Account SDK not supported, using standard wallet connection"
+          "Sub-account retrieval failed, using universal account",
+          subAccountError
         );
-        connectionType = "fallback";
-        setStatus("Connected (Base Account not available)");
+        // If sub-accounts aren't available, just use the universal account
+        setSubAccount({ address: connectedAccount });
+        setStatus("Connected (sub-accounts not available)");
       }
 
-      // Set sub-account (will be null for fallback mode)
-      setSubAccount(subAccountData);
-
-      // Update connection state
       setConnected(true);
-
-      // Show appropriate success message
-      if (connectionType === "base-account") {
-        setStatus("Connected with Base Account support");
-      } else {
-        setStatus("Connected (standard wallet mode)");
-      }
     } catch (error) {
-      console.error("Error connecting wallet:", error);
-
-      // Provide more specific error messages
-      if (error.code === -32603) {
-        setStatus("Connection failed: Method not supported by wallet");
-      } else if (error.code === 4001) {
-        setStatus("Connection cancelled by user");
-      } else {
-        setStatus(`Connection failed: ${error.message || "Unknown error"}`);
-      }
-
-      // Reset state on error
-      setConnected(false);
-      setUniversalAccount("");
-      setSubAccount(null);
+      console.log("Error connecting wallet", error);
+      setStatus(`Failed to connect: ${error.message || "Unknown error"}`);
     } finally {
       setLoading(false);
     }
@@ -166,7 +138,7 @@ function App() {
         method: "wallet_sendCalls",
         params: [
           {
-            version: "2.0",
+            version: "2.0.0",
             from: subAccount.address,
             chainId: `0x${baseSepolia.id.toString(16)}`,
             calls: [
@@ -198,9 +170,7 @@ function App() {
           <h1 className="text-4xl font-bold text-gray-900 mb-2">
             FundMe Dashboard
           </h1>
-          <p className="text-gray-600">
-            Manage your blockchain interactions [sub account implementation]
-          </p>
+          <p className="text-gray-600">Manage your blockchain interactions</p>
         </div>
 
         {/* Main Dashboard Grid */}
@@ -285,6 +255,11 @@ function App() {
                   <span className="font-mono text-xs bg-gray-50 p-2 rounded block break-all">
                     {subAccount?.address || "Not available"}
                   </span>
+                  {subAccount?.address === universalAccount && (
+                    <span className="text-xs text-amber-600 mt-1 block">
+                      ⚠️ Using universal account (sub-account not created yet)
+                    </span>
+                  )}
                 </div>
               </div>
             </div>
@@ -370,7 +345,7 @@ function App() {
         </div>
       </div>
 
-      <style jsx>{`
+      <style>{`
         @keyframes fadeIn {
           from {
             opacity: 0;
