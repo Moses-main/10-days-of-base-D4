@@ -198,7 +198,9 @@ function App() {
           <h1 className="text-4xl font-bold text-gray-900 mb-2">
             FundMe Dashboard
           </h1>
-          <p className="text-gray-600">Manage your blockchain interactions</p>
+          <p className="text-gray-600">
+            Manage your blockchain interactions [sub account implementation]
+          </p>
         </div>
 
         {/* Main Dashboard Grid */}
