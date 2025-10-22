@@ -154,9 +154,141 @@ function App() {
   };
 
   return (
-    <>
-      <h1 className="text-red-500">hello</h1>
-    </>
+    <div className="min-h-screen bg-neutral-950 text-neutral-100">
+      <div className="max-w-3xl mx-auto px-4 py-8">
+        <header className="flex items-center justify-between mb-8">
+          <div className="flex items-center gap-3">
+            <div className="h-9 w-9 rounded-xl bg-gradient-to-br from-blue-500 to-cyan-400" />
+            <div>
+              <h1 className="text-xl font-semibold tracking-tight">Spend Permission Demo</h1>
+              <p className="text-xs text-neutral-400">Base Sepolia • Minimal UI</p>
+            </div>
+          </div>
+
+          <button
+            onClick={handleConnectWallet}
+            disabled={loading}
+            className={`inline-flex items-center gap-2 rounded-lg border border-neutral-800 px-4 py-2 text-sm transition-colors ${
+              connected
+                ? "bg-neutral-900 hover:bg-neutral-800"
+                : "bg-blue-600 hover:bg-blue-500"
+            } disabled:opacity-60 disabled:cursor-not-allowed`}
+          >
+            <span
+              className={`inline-block h-2 w-2 rounded-full mr-1 ${connected ? 'bg-emerald-400' : 'bg-neutral-400'}`}
+            ></span>
+            {loading ? "Connecting..." : connected ? "Wallet Connected" : "Connect Wallet"}
+          </button>
+        </header>
+
+        <main className="space-y-6">
+          <section className="rounded-2xl border border-neutral-800 bg-neutral-900/40 p-5">
+            <div className="flex items-start justify-between gap-4">
+              <div className="space-y-1">
+                <h2 className="text-base font-medium">Connection</h2>
+                <p className="text-sm text-neutral-400">Use Base Account SDK to connect your wallet.</p>
+              </div>
+              <span className={`text-xs rounded-full px-2 py-1 border ${
+                connected ? "border-emerald-600 text-emerald-400" : "border-neutral-700 text-neutral-400"
+              }`}>
+                {connected ? "Connected" : "Disconnected"}
+              </span>
+            </div>
+
+            <div className="mt-4 grid gap-3 text-sm">
+              <div className="flex items-center justify-between">
+                <span className="text-neutral-400">Account</span>
+                <span className="font-mono text-neutral-200 truncate max-w-[60%] text-right">
+                  {account ? `${account.slice(0, 6)}...${account.slice(-4)}` : "—"}
+                </span>
+              </div>
+              <div className="flex items-center justify-between">
+                <span className="text-neutral-400">Status</span>
+                <span className="text-neutral-300">{status || "—"}</span>
+              </div>
+            </div>
+          </section>
+
+          <section className="rounded-2xl border border-neutral-800 bg-neutral-900/40 p-5">
+            <div className="space-y-1 mb-4">
+              <h2 className="text-base font-medium">Spend Permission</h2>
+              <p className="text-sm text-neutral-400">Define an allowance and sign to create a permission.</p>
+            </div>
+
+            <div className="grid gap-4 sm:grid-cols-2">
+              <div className="space-y-2">
+                <label className="text-sm text-neutral-300">Allowance (ETH)</label>
+                <div className="flex items-center gap-2 rounded-xl border border-neutral-800 bg-neutral-950 px-3 py-2.5">
+                  <input
+                    type="number"
+                    step="0.000001"
+                    min="0"
+                    value={allowance}
+                    onChange={(e) => setAllowance(Number(e.target.value))}
+                    className="w-full bg-transparent outline-none placeholder:text-neutral-500 text-neutral-100"
+                    placeholder="0.000000"
+                  />
+                  <span className="text-xs text-neutral-500">ETH</span>
+                </div>
+              </div>
+
+              <div className="space-y-2">
+                <label className="text-sm text-neutral-300">Spender</label>
+                <div className="rounded-xl border border-neutral-800 bg-neutral-950 px-3 py-2.5 text-sm font-mono text-neutral-300 truncate">
+                  {BACKEND_WALLET ? `${BACKEND_WALLET.slice(0, 6)}...${BACKEND_WALLET.slice(-4)}` : "Set VITE_BACKEND_WALLET_ADDRESS"}
+                </div>
+              </div>
+            </div>
+
+            <div className="mt-5 flex flex-wrap items-center gap-3">
+              <button
+                onClick={handleCreatePermission}
+                disabled={!connected || loading || !BACKEND_WALLET}
+                className="inline-flex items-center gap-2 rounded-lg bg-neutral-100 text-neutral-900 px-4 py-2 text-sm font-medium hover:bg-white/90 disabled:opacity-60 disabled:cursor-not-allowed"
+              >
+                {loading ? (
+                  <svg className="h-4 w-4 animate-spin" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z"></path>
+                  </svg>
+                ) : (
+                  <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M9 12l2 2 4-4"></path>
+                    <path d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                  </svg>
+                )}
+                {loading ? "Processing" : "Create Permission"}
+              </button>
+
+              {!connected && (
+                <span className="text-xs text-amber-400">Connect your wallet to proceed.</span>
+              )}
+              {connected && !BACKEND_WALLET && (
+                <span className="text-xs text-amber-400">Backend spender address is not configured.</span>
+              )}
+            </div>
+          </section>
+
+          <section className="rounded-2xl border border-neutral-800 bg-neutral-900/40 p-5">
+            <div className="flex items-center justify-between mb-3">
+              <h2 className="text-base font-medium">Output</h2>
+              <span className="text-xs text-neutral-500">Console also logs details</span>
+            </div>
+            <div className="rounded-xl border border-neutral-800 bg-neutral-950 p-3 text-xs font-mono text-neutral-300 max-h-56 overflow-auto">
+              {permission ? (
+                <pre className="whitespace-pre-wrap break-words">{JSON.stringify(permission, null, 2)}</pre>
+              ) : (
+                <div className="text-neutral-500">No permission created yet.</div>
+              )}
+            </div>
+          </section>
+        </main>
+
+        <footer className="mt-8 text-center text-xs text-neutral-500">
+          Built with Base Account SDK • Tailwind UI
+        </footer>
+      </div>
+    </div>
   );
 }
 
