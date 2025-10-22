@@ -82,7 +82,8 @@ function App() {
               chainId: baseSepolia.id,
             },
           ],
-        });ty
+        });
+        ty;
 
         const existingSubAccount = response?.subAccounts?.[0];
 
