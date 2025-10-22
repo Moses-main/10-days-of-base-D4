@@ -8,7 +8,7 @@ import "./App.css";
 
 function App() {
   const BACKEND_WALLET = import.meta.env.VITE_BACKEND_WALLET_ADDRESS;
-  const TOKEN_ADDRESS = "GET THE BASE SEPOLIA TOKEN ADDRESS";
+  const TOKEN_ADDRESS = import.meta.env.VITE_TOKEN_ADDRESS;
   // Creating the variables or states
   const [connected, setConnected] = useState(false);
   const [sdk, setSdk] = useState(null);
@@ -81,6 +81,11 @@ function App() {
       setStatus("Please set the backend or spender address");
       return;
     }
+    if (!TOKEN_ADDRESS) {
+      alert("Please set the token address (VITE_TOKEN_ADDRESS) in .env");
+      setStatus("Please set the token address (VITE_TOKEN_ADDRESS)");
+      return;
+    }
 
     setLoading(true);
     try {
@@ -90,60 +95,60 @@ function App() {
         token: TOKEN_ADDRESS,
         allowance: parseEther(allowance.toString()),
         period: 2992000,
-        start: Math.floor(Date.now() / 3000),
-        end: 201474375736633,
+        // timestamps in seconds
+        start: Math.floor(Date.now() / 1000),
+        // set end ~30 days ahead for demo purposes
+        end: Math.floor(Date.now() / 1000) + 30 * 24 * 60 * 60,
         salt: `0x${Math.random().toString(16).slice(2)}${Math.random()
           .toString(16)
           .slice(2)}`,
         extraData: "0x",
       };
 
-      const Domain = {
+      const domain = {
         name: "Spend Permission Manager",
         version: "1.0.0",
         chainId: baseSepolia.id,
         verifyingContract: "0x129918F79fB60dc1AC3f07316f0683f9Fa356178",
       };
 
-      const Types = [
-        (SignedPermissions = [
+      const types = {
+        SignedPermission: [
           { name: "account", type: "address" },
           { name: "spender", type: "address" },
           { name: "token", type: "address" },
-          { name: "allowance", type: "uint166" },
+          { name: "allowance", type: "uint256" },
           { name: "period", type: "uint48" },
           { name: "start", type: "uint48" },
           { name: "end", type: "uint48" },
           { name: "salt", type: "uint256" },
           { name: "extraData", type: "bytes" },
-        ]),
-      ];
+        ],
+      };
+
+      const payload = {
+        domain,
+        types,
+        primaryType: "SignedPermission",
+        message: Permission,
+      };
 
       const signature = await provider.request({
-        method: "eth_signTypeData_u4",
-        params: [
-          account,
-          JSON.stringify({
-            Domain,
-            Types,
-            primaryType: "SignedPermission",
-            message,
-            permission,
-          }),
-        ],
+        method: "eth_signTypedData_v4",
+        params: [account, JSON.stringify(payload)],
       });
 
-      const newPermisson = [permission, signature];
-      setPermission(newPermisson);
+      const result = { permission: Permission, signature };
+      setPermission(result);
 
       console.log("######################################################");
       console.log("*************  SPEND PERMISSION CREATED *************");
       console.log("######################################################");
       console.log(`\n COPY THIS TO BACKEND SCRIPTS \n`);
       console.log(`// Permission Object:`);
-      console.log(JSON.stringify(newPermisson.permission, null, 2));
+      console.log(JSON.stringify(result.permission, null, 2));
       console.log(`\n// Signature:`);
-      console.log(`${newPermisson.permission}`);
+      console.log(`${result.signature}`);
       console.log("######################################################");
     } catch (error) {
       console.log("Failed Creating Spending Permission", error);
@@ -264,12 +269,20 @@ function App() {
                     : "Set VITE_BACKEND_WALLET_ADDRESS"}
                 </div>
               </div>
+              <div className="space-y-2 sm:col-span-2">
+                <label className="text-sm text-neutral-300">Token</label>
+                <div className="rounded-xl border border-neutral-800 bg-neutral-950 px-3 py-2.5 text-sm font-mono text-neutral-300 truncate">
+                  {TOKEN_ADDRESS
+                    ? `${TOKEN_ADDRESS.slice(0, 6)}...${TOKEN_ADDRESS.slice(-4)}`
+                    : "Set VITE_TOKEN_ADDRESS"}
+                </div>
+              </div>
             </div>
 
             <div className="mt-5 flex flex-wrap items-center gap-3">
               <button
                 onClick={handleCreatePermission}
-                disabled={!connected || loading || !BACKEND_WALLET}
+                disabled={!connected || loading || !BACKEND_WALLET || !TOKEN_ADDRESS}
                 className="inline-flex items-center gap-2 rounded-lg bg-neutral-100 text-neutral-900 px-4 py-2 text-sm font-medium hover:bg-white/90 disabled:opacity-60 disabled:cursor-not-allowed"
               >
                 {loading ? (
